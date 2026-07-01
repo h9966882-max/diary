@@ -10,6 +10,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@500;700&family=Zen+Kaku+Gothic+New:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/rough.js/2.1.1/rough.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 :root{
   --paper:#ECE6D6;
@@ -39,6 +40,35 @@ body{
 }
 .mono{font-family:'JetBrains Mono',monospace;}
 .serif{font-family:'Shippori Mincho',serif;}
+
+#appRoot{display:none;}
+
+.authscreen{
+  min-height:100vh;display:flex;align-items:center;justify-content:center;
+  padding:24px;
+}
+.authcard{
+  width:100%;max-width:340px;
+  background:var(--card);border:1.5px solid var(--ink);border-radius:var(--radius);
+  box-shadow:3px 3px 0 var(--line);padding:26px 22px;
+}
+.authcard h1{
+  font-family:'Shippori Mincho',serif;font-size:20px;text-align:center;
+  color:var(--indigo-deep);margin:0 0 4px;
+}
+.authcard .sub{text-align:center;font-size:12px;color:var(--ink-soft);margin-bottom:18px;}
+.authcard label{font-size:12px;color:var(--ink-soft);display:block;margin:10px 0 4px;}
+.authcard input{
+  width:100%;border:1.5px solid var(--ink);border-radius:8px;padding:9px 10px;
+  font-size:14px;background:#fffdf7;font-family:'Zen Kaku Gothic New',sans-serif;
+}
+.authcard .btn{width:100%;margin-top:16px;}
+.authcard .switchmode{
+  text-align:center;font-size:12px;color:var(--indigo);margin-top:14px;
+  text-decoration:underline;cursor:pointer;
+}
+.authcard .err{color:var(--coral);font-size:12px;margin-top:8px;min-height:14px;}
+.authcard .loading{text-align:center;font-size:12px;color:var(--ink-soft);margin-top:8px;}
 
 header.top{
   display:flex;align-items:center;justify-content:space-between;
@@ -98,6 +128,27 @@ main{max-width:520px;margin:0 auto;padding:0 16px;}
 }
 .frame-wrap{position:relative;width:220px;height:220px;margin:0 auto;}
 .frame-wrap canvas{position:absolute;top:0;left:0;}
+.bubble{
+  position:absolute;top:2px;left:50%;
+  transform:translate(-50%,-100%) scale(.92);
+  background:#fffdf7;border:1.5px solid var(--ink);border-radius:14px;
+  padding:8px 13px;font-size:12.5px;line-height:1.4;
+  max-width:210px;min-width:60px;text-align:center;
+  box-shadow:2px 2px 0 var(--line);
+  opacity:0;pointer-events:none;z-index:6;
+  transition:opacity .25s ease, transform .25s ease;
+}
+.bubble::after{
+  content:"";position:absolute;bottom:-7px;left:50%;transform:translateX(-50%);
+  width:0;height:0;border-left:7px solid transparent;border-right:7px solid transparent;
+  border-top:8px solid var(--ink);
+}
+.bubble::before{
+  content:"";position:absolute;bottom:-4.5px;left:50%;transform:translateX(-50%);
+  width:0;height:0;border-left:5.5px solid transparent;border-right:5.5px solid transparent;
+  border-top:6.5px solid #fffdf7;z-index:1;
+}
+.bubble.show{opacity:1;transform:translate(-50%,-108%) scale(1);}
 .stagepill{
   margin-top:8px;
   font-size:12px;color:var(--ink-soft);
@@ -206,6 +257,39 @@ ul.list li:last-child{border-bottom:none;}
   font-size:11px;border:1px solid var(--gold);color:var(--gold);
   border-radius:999px;padding:3px 10px;font-family:'JetBrains Mono',monospace;
 }
+
+/* --- reward --- */
+.chiprow{display:flex;flex-wrap:wrap;gap:6px;}
+.chip{
+  border:1.5px solid var(--ink);border-radius:999px;
+  padding:5px 12px;font-size:12px;background:#fffdf7;cursor:pointer;
+  color:var(--ink-soft);
+}
+.chip.active{background:var(--indigo);color:#fff;border-color:var(--ink);}
+.drawncard{
+  margin-top:12px;border:1.5px dashed var(--indigo);border-radius:10px;
+  padding:14px;text-align:center;background:#fffdf7;
+}
+.drawncard .dtxt{font-family:'Shippori Mincho',serif;font-size:16px;margin-bottom:8px;}
+.drawncard .dcat{font-size:11px;color:var(--ink-soft);margin-bottom:10px;}
+.rewardgroup{margin-bottom:14px;}
+.rewardgroup h3{
+  font-family:'Shippori Mincho',serif;font-size:13px;color:var(--indigo-deep);
+  margin:0 0 6px;border-bottom:1px dashed var(--line);padding-bottom:4px;
+}
+.rewarditem{
+  display:flex;align-items:center;gap:9px;padding:7px 0;font-size:13px;
+}
+.rewarditem .rtxt{flex:1;}
+.rcount{
+  font-family:'JetBrains Mono',monospace;font-size:10.5px;color:var(--ink-soft);
+  background:#00000008;border-radius:6px;padding:2px 6px;flex:none;
+}
+.rcheck{
+  flex:none;border:1.5px solid var(--ink);border-radius:999px;
+  width:26px;height:26px;background:#fffdf7;cursor:pointer;font-size:13px;
+}
+.rcheck.on{background:var(--moss);color:#fff;}
 .namefield{display:flex;gap:8px;align-items:center;margin-bottom:10px;}
 .namefield input{
   flex:1;border:1.5px solid var(--ink);border-radius:8px;padding:8px 10px;
@@ -254,6 +338,22 @@ nav.tabbar button.active{color:var(--indigo-deep);font-weight:700;}
 </head>
 <body>
 
+<div class="authscreen" id="authScreen">
+  <div class="authcard">
+    <h1>🌱 そだてノート</h1>
+    <p class="sub" id="authSubTxt">ログインして始めよう</p>
+    <label for="authEmail">メールアドレス</label>
+    <input type="email" id="authEmail" autocomplete="email" placeholder="you@example.com">
+    <label for="authPassword">パスワード</label>
+    <input type="password" id="authPassword" autocomplete="current-password" placeholder="6文字以上">
+    <button class="btn" id="authSubmitBtn" style="width:100%;">ログイン</button>
+    <p class="err" id="authErrTxt"></p>
+    <p class="loading" id="authLoadingTxt"></p>
+    <p class="switchmode" id="authSwitchTxt">アカウントを持ってない?新規登録はこちら</p>
+  </div>
+</div>
+
+<div id="appRoot">
 <header class="top">
   <div class="brand">そだてノート</div>
   <div class="lvbadge">
@@ -268,7 +368,7 @@ nav.tabbar button.active{color:var(--indigo-deep);font-weight:700;}
   <section class="page active" id="page-home">
     <div class="card">
       <div class="observation">
-        <div class="frame-wrap"><canvas id="petCanvasHome" width="220" height="220"></canvas></div>
+        <div class="frame-wrap"><canvas id="petCanvasHome" width="220" height="220"></canvas><div class="bubble" id="bubbleHome"></div></div>
         <div class="petname" id="homePetName">みつ</div>
         <div class="stagepill"><span>段階 <b id="homeStageNum">1</b>/<span id="homeStageMax">12</span></span><span id="homeStageName">たまご</span></div>
       </div>
@@ -332,7 +432,7 @@ nav.tabbar button.active{color:var(--indigo-deep);font-weight:700;}
   <section class="page" id="page-pet">
     <div class="card">
       <div class="observation">
-        <div class="frame-wrap"><canvas id="petCanvasDetail" width="220" height="220"></canvas></div>
+        <div class="frame-wrap"><canvas id="petCanvasDetail" width="220" height="220"></canvas><div class="bubble" id="bubbleDetail"></div></div>
       </div>
       <div class="namefield">
         <input type="text" id="petNameInput" placeholder="名前をつけてね">
@@ -351,6 +451,23 @@ nav.tabbar button.active{color:var(--indigo-deep);font-weight:700;}
       <p class="hint" id="daysWithTxt"></p>
       <div class="milestones" id="milestoneList"></div>
     </div>
+    <div class="card">
+      <p class="hint" id="accountEmailTxt"></p>
+      <button class="btn ghost" id="logoutBtn" style="width:100%;">ログアウト</button>
+    </div>
+  </section>
+  <!-- REWARD -->
+  <section class="page" id="page-reward">
+    <div class="card">
+      <h2>今日のご褒美を引く</h2>
+      <div class="chiprow" id="rewardMoodChips"></div>
+      <button class="btn coral" id="drawRewardBtn" style="width:100%;margin-top:10px;">🎲 引いてみる</button>
+      <div id="drawnRewardBox"></div>
+    </div>
+    <div class="card">
+      <h2>やったこと記録<span class="mono" id="rewardTotalTxt" style="font-size:11px;color:var(--ink-soft);"></span></h2>
+      <div id="rewardCategoryList"></div>
+    </div>
   </section>
 
 </main>
@@ -360,28 +477,25 @@ nav.tabbar button.active{color:var(--indigo-deep);font-weight:700;}
   <button data-page="diary"><span class="ic">📔</span>日記</button>
   <button data-page="tasks"><span class="ic">✅</span>タスク</button>
   <button data-page="habits"><span class="ic">🔥</span>習慣</button>
+  <button data-page="reward"><span class="ic">🎁</span>ご褒美</button>
   <button data-page="pet"><span class="ic">🐾</span>ペット</button>
 </nav>
 
 <div class="toast" id="toast"></div>
+</div>
+
 
 <script>
 /* =========================================================
    そだてノート — 日記×タスク×習慣 ペット育成PWA
    ========================================================= */
 
-/* ---------- storage (with in-memory fallback) ---------- */
-const memoryStore = {};
-const storage = {
-  get(k){
-    try{ const v = localStorage.getItem(k); return v===null? null : v; }
-    catch(e){ return memoryStore[k] ?? null; }
-  },
-  set(k,v){
-    try{ localStorage.setItem(k,v); }
-    catch(e){ memoryStore[k]=v; }
-  }
-};
+/* ---------- Supabase client & auth ---------- */
+const SUPABASE_URL = 'https://wvsogabeckhuhcqelpja.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind2c29nYWJlY2todWhjcWVscGphIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI5MTM0MTQsImV4cCI6MjA5ODQ4OTQxNH0.2acsqUIXTYsxUoYM6Lu5F4n-vwShh1Ogmpomm4FlBys';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+let currentUser = null;
+let saveTimer = null;
 
 const todayStr = (d=new Date()) => {
   const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,'0'), day=String(d.getDate()).padStart(2,'0');
@@ -407,6 +521,68 @@ const STAGES = [
 const MAX_STAGE = STAGES.length; // 12
 const MILESTONE_DAYS = [7,14,30,50,100,200,300,500,750,1000,1500,2000];
 
+/* ---------- reward items (stress relief menu) ---------- */
+const REWARD_CATEGORIES = [
+  {key:'mushin',  label:'🧶 手を動かして無心になる'},
+  {key:'hitori',  label:'☕ 贅沢なひとり時間'},
+  {key:'gokan',   label:'🌸 五感をゆるめる'},
+  {key:'sukkiri', label:'🧠 頭をスッキリさせる'},
+  {key:'ugoku',   label:'🚗 動いて切り替える'},
+  {key:'sekai',   label:'🎭 好きな世界に浸る'},
+  {key:'bangai',  label:'📎 番外編'},
+];
+const REWARD_ITEMS = [
+  {id:'r1',cat:'mushin',text:'無心編み(模様を考えずガーター/メリヤスだけ)'},
+  {id:'r2',cat:'mushin',text:'かぎ針でモチーフ編みを量産する'},
+  {id:'r3',cat:'mushin',text:'普段選ばない色・素材の糸や布に触れて小物を作る'},
+  {id:'r4',cat:'mushin',text:'端切れでミニポーチなど小物を試作する'},
+  {id:'r5',cat:'mushin',text:'毛糸や布をただ触る'},
+  {id:'r6',cat:'mushin',text:'刺繍など新しい手芸を始めてみる'},
+  {id:'r7',cat:'mushin',text:'ペン習字・カリグラフィーで文字をなぞる'},
+  {id:'r8',cat:'mushin',text:'ぬり絵に没頭する'},
+  {id:'r9',cat:'hitori',text:'静かなカフェでスマホをオフにして読書'},
+  {id:'r10',cat:'hitori',text:'ホテルのラウンジで贅沢ティータイム'},
+  {id:'r11',cat:'hitori',text:'装丁だけで本を1冊選ぶ「装丁買い」'},
+  {id:'r12',cat:'hitori',text:'間接照明だけで哲学書やエッセイを数ページ'},
+  {id:'r13',cat:'hitori',text:'一番ときめく器でお茶を淹れて楽しむ'},
+  {id:'r14',cat:'hitori',text:'お気に入りのカップでお茶'},
+  {id:'r15',cat:'hitori',text:'紅茶の茶葉を変えて飲み比べる'},
+  {id:'r16',cat:'hitori',text:'香りのいいコーヒーを淹れる/カフェをハシゴ'},
+  {id:'r17',cat:'gokan',text:'花屋さんや花畑にぶらぶら見に行く'},
+  {id:'r18',cat:'gokan',text:'好きな香水・アロマオイルを楽しむ'},
+  {id:'r19',cat:'gokan',text:'お香を焚きながら本を読む'},
+  {id:'r20',cat:'gokan',text:'キャンドルの灯りだけで長風呂'},
+  {id:'r21',cat:'gokan',text:'バスソルトを手作りしてみる'},
+  {id:'r22',cat:'gokan',text:'部屋の灯りをキャンドルだけにして過ごす夜'},
+  {id:'r23',cat:'gokan',text:'雨の日に窓を眺める/朝日や夕日を見る'},
+  {id:'r24',cat:'sukkiri',text:'答えのない問いをノートに書き殴る(誰にも見せない)'},
+  {id:'r25',cat:'sukkiri',text:'読んだことのないジャンルの本を1冊選ぶ'},
+  {id:'r26',cat:'sukkiri',text:'「今気になってること」を10個書き出す'},
+  {id:'r27',cat:'sukkiri',text:'自分の考えを図解してみる'},
+  {id:'r28',cat:'sukkiri',text:'好きな概念について、あえて反対の立場から反論してみる'},
+  {id:'r29',cat:'sukkiri',text:'感情日記を書き殴り、最後は破って捨てる'},
+  {id:'r30',cat:'ugoku',text:'目的を決めずに音楽ドライブ'},
+  {id:'r31',cat:'ugoku',text:'朝の誰もいない公園を散歩する'},
+  {id:'r32',cat:'ugoku',text:'行ったことのない街の喫茶店を開拓する'},
+  {id:'r33',cat:'ugoku',text:'部屋の小規模模様替え/引き出し1つ分の断捨離'},
+  {id:'r34',cat:'ugoku',text:'生地屋さん・文房具屋さん・古本屋巡り'},
+  {id:'r35',cat:'ugoku',text:'美術館・博物館、茶室や日本庭園巡り'},
+  {id:'r36',cat:'sekai',text:'好きな作曲家縛りでプレイリストを作る'},
+  {id:'r37',cat:'sekai',text:'過去の感動ステージのパンフレットや名シーンを見返す'},
+  {id:'r38',cat:'sekai',text:'観劇の遠征計画を(妄想でも)完璧に立ててみる'},
+  {id:'r39',cat:'sekai',text:'バレエやタカラヅカの映像を予定を入れず1本観る'},
+  {id:'r40',cat:'sekai',text:'天体観測、海、バラ園や植物園でのんびりする'},
+  {id:'r41',cat:'bangai',text:'サウナで整う'},
+  {id:'r42',cat:'bangai',text:'ボクシング系運動で発散する'},
+  {id:'r43',cat:'bangai',text:'腹式呼吸10回/4秒吸って6秒吐く呼吸'},
+  {id:'r44',cat:'bangai',text:'筋弛緩法(手や肩に力を入れて抜く)'},
+  {id:'r45',cat:'bangai',text:'ペットとのグルーミング・くっつき時間'},
+  {id:'r46',cat:'bangai',text:'過去の写真を振り返りながら感謝日記を書く'},
+  {id:'r47',cat:'bangai',text:'新しい曲のデモを録音し感情を全部吐き出す'},
+  {id:'r48',cat:'bangai',text:'好きな公演をマラソン視聴する(推しシーンだけでもOK)'},
+];
+const REWARD_MILESTONES = [10,30,60,100,150,200,300];
+
 /* ---------- default state ---------- */
 function defaultState(){
   return {
@@ -415,18 +591,40 @@ function defaultState(){
     diary:[],           // {id, date, text, exp, auto}
     tasks:[],           // {id, text, done, doneDate}
     habits:[],          // {id, text, streak, lastDoneDate}
+    rewardLog:[],        // {id, itemId, date}
+    rewardMilestonesHit:[],
     draftedFor:null      // date string for which auto-draft already injected
   };
 }
 let state;
-function load(){
-  const raw = storage.get('sodateNote');
-  if(raw){ try{ state = JSON.parse(raw); }catch(e){ state = defaultState(); } }
-  else state = defaultState();
-  // decay hunger based on days since last activity
+
+/* load current user's state from Supabase; creates a row if none exists yet */
+async function loadFromSupabase(){
+  const {data, error} = await sb.from('game_state').select('state').eq('user_id', currentUser.id).maybeSingle();
+  if(error){ console.error(error); state = defaultState(); }
+  else if(data && data.state && Object.keys(data.state).length){ state = data.state; }
+  else { state = defaultState(); }
+  // backward-compat: fill in fields added in later versions
+  if(!state.rewardLog) state.rewardLog = [];
+  if(!state.rewardMilestonesHit) state.rewardMilestonesHit = [];
   applyPassiveDecay();
+  if(!data || !data.state || !Object.keys(data.state).length){ await pushToSupabase(); }
 }
-function save(){ storage.set('sodateNote', JSON.stringify(state)); }
+
+/* debounced write so rapid actions don't spam the API */
+function save(){
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(pushToSupabase, 600);
+}
+async function pushToSupabase(){
+  if(!currentUser) return;
+  const {error} = await sb.from('game_state').upsert({
+    user_id: currentUser.id,
+    state: state,
+    updated_at: new Date().toISOString()
+  });
+  if(error) console.error('sync error:', error);
+}
 
 function applyPassiveDecay(){
   const last = state.pet.lastFedDate || state.pet.born;
@@ -447,6 +645,7 @@ function addExp(amount){
     state.player.level++;
     need = expToNext(state.player.level);
     toast(`レベルアップ! Lv${state.player.level} 🎉`);
+    speak(pick(LINES.levelUp)());
   }
 }
 
@@ -461,6 +660,7 @@ function addEvo(amount){
   const after = currentStageIndex();
   if(after > before){
     toast(`${state.pet.name}が進化した!「${STAGES[after].name}」 ✨`);
+    speak(pick(LINES.evolve)());
   }
   checkMilestones();
 }
@@ -470,6 +670,7 @@ function checkMilestones(){
     if(d >= m && !state.pet.milestonesHit.includes(m)){
       state.pet.milestonesHit.push(m);
       toast(`記念日達成: ${m}日 🌟`);
+      speak(pick(LINES.milestone)(m));
     }
   });
 }
@@ -482,6 +683,72 @@ function toast(msg){
   el.classList.add('show');
   clearTimeout(toastTimer);
   toastTimer = setTimeout(()=>el.classList.remove('show'), 2200);
+}
+
+/* ---------- pet speech (bubble) ---------- */
+let lastSpeakAt = 0;
+function showBubble(id, text){
+  const el = document.getElementById(id);
+  if(!el) return;
+  el.textContent = text;
+  el.classList.add('show');
+  clearTimeout(el._t);
+  el._t = setTimeout(()=>el.classList.remove('show'), 4200);
+}
+function speak(text){
+  lastSpeakAt = Date.now();
+  showBubble('bubbleHome', text);
+  showBubble('bubbleDetail', text);
+}
+function pick(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
+function n(){ return state.pet.name; }
+
+const LINES = {
+  idleHappy: [
+    ()=>`${n()}は今日も元気いっぱい!`, ()=>`なんだかいい気分〜`, ()=>`一緒にいると落ち着くなぁ`,
+    ()=>`今日は何する?`, ()=>`ねえねえ、聞いて!`, ()=>`ふんふん〜ん♪`
+  ],
+  idleMeh: [
+    ()=>`ちょっとお腹すいてきたかも`, ()=>`なんとなく、ぼーっとしちゃう`, ()=>`今日はまだ何もしてない…?`
+  ],
+  idleSad: [
+    ()=>`お腹すいた…タスクやろうよ〜`, ()=>`ちょっとさみしいな`, ()=>`最近あんまり構ってくれないね…`
+  ],
+  taskDone: [
+    ()=>`ありがとう!おなかいっぱい〜`, ()=>`もぐもぐ…おいしい!`, ()=>`これで元気百倍だ!`,
+    ()=>`${n()}、満足そう〜`, ()=>`ごちそうさま!`
+  ],
+  habitDone: [
+    (s)=>`${s}日連続だね、すごいすごい!`, (s)=>`続けるの、えらいなぁ`, (s)=>`その調子その調子〜`,
+    (s)=>`${n()}も嬉しい!`, (s)=>`積み重ねって力になるね`
+  ],
+  diarySaved: [
+    ()=>`お話ししてくれてありがとう`, ()=>`今日のこと、教えてくれて嬉しい`, ()=>`ふむふむ、聞いたよ〜`,
+    ()=>`また明日も聞かせてね`, ()=>`書くの、頑張ったね`
+  ],
+  levelUp: [
+    ()=>`なんだか力がみなぎる…!`, ()=>`レベルアップ、おめでとう!`, ()=>`どんどん強くなってる!`
+  ],
+  evolve: [
+    ()=>`からだが、変化してる…!`, ()=>`なんだか新しい自分になった気がする`, ()=>`${n()}、育ってきたね!`
+  ],
+  milestone: [
+    (d)=>`${d}日も一緒にいてくれてありがとう`, (d)=>`ここまで一緒に来られて嬉しいな`, (d)=>`${d}日目、記念日おめでとう!`
+  ],
+  rewardDone: [
+    ()=>`ちゃんと自分を甘やかせてえらい!`, ()=>`いい時間だったね〜`, ()=>`たまにはゆっくりも大事だよ`,
+    ()=>`リフレッシュできた?`, ()=>`その調子、無理しすぎないでね`
+  ],
+  rewardMilestone: [
+    (c)=>`もう${c}回も自分をいたわってるんだね、えらいよ`, (c)=>`${c}回目のご褒美、よく頑張ったね`, (c)=>`ちゃんと休めてるの、すごくいいことだよ`
+  ]
+};
+function idleSpeak(){
+  if(Date.now() - lastSpeakAt < 3000) return;
+  if(Math.random() > 0.55) return;
+  const h = state.pet.hunger;
+  const pool = h > 60 ? LINES.idleHappy : (h > 30 ? LINES.idleMeh : LINES.idleSad);
+  speak(pick(pool)());
 }
 
 /* ---------- pet rendering (rough.js hand-drawn) ---------- */
@@ -646,6 +913,7 @@ function saveDiary(){
   state.draftedFor = null;
   save();
   toast(`記録した!+${exp}EXP ✍️`);
+  speak(pick(LINES.diarySaved)());
   renderDiary(); renderHome(); renderPetDetail(); renderHeader();
 }
 function renderDiary(){
@@ -678,6 +946,7 @@ function toggleTask(id){
     state.pet.hunger = Math.min(100, state.pet.hunger + 12);
     state.pet.lastFedDate = todayStr();
     toast(`${state.pet.name}にエサをあげた🍚 +8EXP`);
+    speak(pick(LINES.taskDone)());
   } else {
     t.doneDate = null;
   }
@@ -726,6 +995,7 @@ function checkHabit(id){
   state.pet.affection = Math.min(100, state.pet.affection + 4);
   save(); renderHabits(); renderHome(); renderHeader(); renderPetDetail();
   toast(`「${h.text}」継続${h.streak}日目!🔥`);
+  speak(pick(LINES.habitDone)(h.streak));
 }
 function deleteHabit(id){
   state.habits = state.habits.filter(x=>x.id!==id);
@@ -744,8 +1014,87 @@ function renderHabits(){
     </li>`).join('');
 }
 
+/* ---------- reward (stress-relief record) ---------- */
+let rewardMoodFilter = 'all';
+function rewardCountFor(itemId){
+  return state.rewardLog.filter(r=>r.itemId===itemId).length;
+}
+function rewardTotalCount(){ return state.rewardLog.length; }
+function checkRewardMilestones(){
+  const total = rewardTotalCount();
+  REWARD_MILESTONES.forEach(m=>{
+    if(total >= m && !state.rewardMilestonesHit.includes(m)){
+      state.rewardMilestonesHit.push(m);
+      toast(`ご褒美 ${m}回達成 🎁`);
+      speak(pick(LINES.rewardMilestone)(m));
+    }
+  });
+}
+function toggleReward(itemId){
+  // add a record every tap (simple tally); tap again on same day removes the most recent one for that item today
+  const t = todayStr();
+  const idxToday = state.rewardLog.findIndex(r=>r.itemId===itemId && r.date===t);
+  if(idxToday >= 0){
+    state.rewardLog.splice(idxToday,1);
+    save(); renderRewards();
+    return;
+  }
+  state.rewardLog.push({id:Date.now()+"_"+Math.floor(Math.random()*10000), itemId, date:t});
+  save();
+  toast('記録したよ🎁');
+  speak(pick(LINES.rewardDone)());
+  checkRewardMilestones();
+  renderRewards();
+}
+function drawReward(){
+  const pool = rewardMoodFilter==='all' ? REWARD_ITEMS : REWARD_ITEMS.filter(r=>r.cat===rewardMoodFilter);
+  if(pool.length===0) return;
+  const item = pick(pool);
+  const cat = REWARD_CATEGORIES.find(c=>c.key===item.cat);
+  const box = document.getElementById('drawnRewardBox');
+  const t = todayStr();
+  const doneToday = state.rewardLog.some(r=>r.itemId===item.id && r.date===t);
+  box.innerHTML = `
+    <div class="drawncard">
+      <div class="dcat">${cat ? cat.label : ''}</div>
+      <div class="dtxt">${escapeHtml(item.text)}</div>
+      <button class="btn ${doneToday?'moss':'coral'}" onclick="toggleReward('${item.id}'); drawReward();">${doneToday?'やった!✓':'これやってみる'}</button>
+    </div>`;
+}
+function renderRewardMoodChips(){
+  const wrap = document.getElementById('rewardMoodChips');
+  const chips = [{key:'all',label:'すべて'}, ...REWARD_CATEGORIES];
+  wrap.innerHTML = chips.map(c=>`<button class="chip ${rewardMoodFilter===c.key?'active':''}" onclick="setRewardMood('${c.key}')">${c.label.replace(/^\S+\s/,'')}</button>`).join('');
+}
+function setRewardMood(key){
+  rewardMoodFilter = key;
+  renderRewardMoodChips();
+}
+function renderRewards(){
+  document.getElementById('rewardTotalTxt').textContent = ` 累計${rewardTotalCount()}回`;
+  renderRewardMoodChips();
+  const t = todayStr();
+  const listEl = document.getElementById('rewardCategoryList');
+  listEl.innerHTML = REWARD_CATEGORIES.map(cat=>{
+    const items = REWARD_ITEMS.filter(i=>i.cat===cat.key);
+    const rows = items.map(i=>{
+      const cnt = rewardCountFor(i.id);
+      const doneToday = state.rewardLog.some(r=>r.itemId===i.id && r.date===t);
+      return `<div class="rewarditem">
+        <button class="rcheck ${doneToday?'on':''}" onclick="toggleReward('${i.id}')">${doneToday?'✓':''}</button>
+        <span class="rtxt">${escapeHtml(i.text)}</span>
+        ${cnt>0?`<span class="rcount">×${cnt}</span>`:''}
+      </div>`;
+    }).join('');
+    return `<div class="rewardgroup"><h3>${cat.label}</h3>${rows}</div>`;
+  }).join('');
+}
+document.getElementById('drawRewardBtn').addEventListener('click', drawReward);
+
 /* ---------- home ---------- */
 function renderHome(){
+  const homeCanvas = document.getElementById('petCanvasHome');
+  if(homeCanvas) drawPet(homeCanvas);
   document.getElementById('homePetName').textContent = state.pet.name;
   const idx = currentStageIndex();
   document.getElementById('homeStageNum').textContent = idx+1;
@@ -773,6 +1122,8 @@ function renderHeader(){
 
 /* ---------- pet detail ---------- */
 function renderPetDetail(){
+  const detailCanvas = document.getElementById('petCanvasDetail');
+  if(detailCanvas) drawPet(detailCanvas);
   document.getElementById('petNameInput').value = state.pet.name;
   const idx = currentStageIndex();
   const next = STAGES[idx+1];
@@ -807,6 +1158,8 @@ function showPage(name){
   document.getElementById('page-'+name).classList.add('active');
   document.querySelectorAll('nav.tabbar button').forEach(b=>b.classList.toggle('active', b.dataset.page===name));
   if(name==='diary'){ maybeInjectDraft(); }
+  if(name==='home'){ idleSpeak(); }
+  if(name==='reward'){ renderRewards(); document.getElementById('drawnRewardBox').innerHTML=''; }
   if(name==='pet'){ renderPetDetail(); requestAnimationFrame(()=>drawPet(document.getElementById('petCanvasDetail'))); }
 }
 document.querySelectorAll('nav.tabbar button').forEach(b=>{
@@ -844,11 +1197,69 @@ document.getElementById('saveNameBtn').addEventListener('click', savePetName);
 })();
 
 /* ---------- init ---------- */
-load();
-renderHeader(); renderHome(); renderDiary(); renderTasks(); renderHabits(); renderPetDetail();
-updateDiaryHint();
-window.addEventListener('load', renderAllPetCanvases);
-requestAnimationFrame(renderAllPetCanvases);
+async function initAfterAuth(user){
+  currentUser = user;
+  document.getElementById('authScreen').style.display = 'none';
+  document.getElementById('appRoot').style.display = 'block';
+  document.getElementById('accountEmailTxt').textContent = `ログイン中: ${user.email}`;
+  await loadFromSupabase();
+  renderHeader(); renderHome(); renderDiary(); renderTasks(); renderHabits(); renderRewards(); renderPetDetail();
+  updateDiaryHint();
+  renderAllPetCanvases();
+}
+function showAuthScreen(){
+  currentUser = null;
+  document.getElementById('appRoot').style.display = 'none';
+  document.getElementById('authScreen').style.display = 'flex';
+}
+
+let authMode = 'login'; // 'login' | 'signup'
+function setAuthErr(msg){ document.getElementById('authErrTxt').textContent = msg || ''; }
+function setAuthLoading(msg){ document.getElementById('authLoadingTxt').textContent = msg || ''; }
+
+document.getElementById('authSwitchTxt').addEventListener('click', ()=>{
+  authMode = authMode === 'login' ? 'signup' : 'login';
+  document.getElementById('authSubmitBtn').textContent = authMode === 'login' ? 'ログイン' : '新規登録';
+  document.getElementById('authSubTxt').textContent = authMode === 'login' ? 'ログインして始めよう' : '新しいアカウントを作る';
+  document.getElementById('authSwitchTxt').textContent = authMode === 'login' ? 'アカウントを持ってない?新規登録はこちら' : 'もうアカウントがある?ログインはこちら';
+  setAuthErr('');
+});
+
+document.getElementById('authSubmitBtn').addEventListener('click', async ()=>{
+  const email = document.getElementById('authEmail').value.trim();
+  const password = document.getElementById('authPassword').value;
+  setAuthErr('');
+  if(!email || !password){ setAuthErr('メールアドレスとパスワードを入力してね'); return; }
+  setAuthLoading('通信中…');
+  try{
+    if(authMode === 'signup'){
+      const {data, error} = await sb.auth.signUp({email, password});
+      if(error){ setAuthErr(error.message); }
+      else if(data.session){ /* onAuthStateChange handles the rest */ }
+      else { setAuthErr(''); setAuthLoading('確認メールを送ったよ。メール内のリンクを開いてからログインしてね。'); }
+    } else {
+      const {error} = await sb.auth.signInWithPassword({email, password});
+      if(error){ setAuthErr(error.message); }
+    }
+  } catch(e){
+    setAuthErr('通信エラーが発生したよ。もう一度試してみてね。');
+  } finally {
+    setAuthLoading('');
+  }
+});
+
+document.getElementById('logoutBtn').addEventListener('click', async ()=>{
+  await sb.auth.signOut();
+});
+
+sb.auth.onAuthStateChange((event, session)=>{
+  if(session && session.user){ initAfterAuth(session.user); }
+  else { showAuthScreen(); }
+});
+sb.auth.getSession().then(({data})=>{
+  if(data.session && data.session.user){ initAfterAuth(data.session.user); }
+  else { showAuthScreen(); }
+});
 </script>
 </body>
 </html>
