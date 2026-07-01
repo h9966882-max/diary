@@ -186,6 +186,14 @@ main{max-width:520px;margin:0 auto;padding:0 16px;}
 .todaylist .empty{color:var(--ink-soft);font-size:12px;padding:6px 0;}
 
 /* --- diary --- */
+.datelabel{
+  display:flex;align-items:center;gap:8px;
+  font-size:12px;color:var(--ink-soft);margin-bottom:10px;
+}
+.datelabel input[type=date]{
+  border:1.5px solid var(--ink);border-radius:8px;padding:6px 8px;
+  font-family:'JetBrains Mono',monospace;font-size:12.5px;background:#fffdf7;color:var(--ink);
+}
 textarea{
   width:100%;min-height:110px;
   border:1.5px solid var(--ink);border-radius:10px;
@@ -391,9 +399,13 @@ nav.tabbar button.active{color:var(--indigo-deep);font-weight:700;}
   <!-- DIARY -->
   <section class="page" id="page-diary">
     <div class="card">
-      <h2>今日の日記</h2>
+      <h2>日記<span class="mono" id="diaryEditingBadge" style="font-size:11px;color:var(--coral);"></span></h2>
+      <label class="datelabel">記録日<input type="date" id="diaryDateInput"></label>
       <textarea id="diaryInput" placeholder="今日はどんな一日だった?"></textarea>
-      <div class="row-end"><button class="btn" id="saveDiaryBtn">記録する (+EXP)</button></div>
+      <div class="row-end">
+        <button class="btn ghost" id="cancelEditDiaryBtn" style="display:none;">編集をやめる</button>
+        <button class="btn" id="saveDiaryBtn">記録する (+EXP)</button>
+      </div>
       <p class="hint" id="diaryHint"></p>
     </div>
     <div class="card">
@@ -406,12 +418,13 @@ nav.tabbar button.active{color:var(--indigo-deep);font-weight:700;}
   <section class="page" id="page-tasks">
     <div class="card">
       <h2>タスク</h2>
+      <label class="datelabel">記録日<input type="date" id="taskDateInput"></label>
       <div class="inputrow">
         <input type="text" id="taskInput" placeholder="やることを入力…">
         <button class="btn coral" id="addTaskBtn">追加</button>
       </div>
       <ul class="list" id="taskList"></ul>
-      <p class="hint">達成するとペットのエサになるよ🍚</p>
+      <p class="hint">達成するとペットのエサになるよ🍚 チェックは「記録日」の日付で記録されるよ</p>
     </div>
   </section>
 
@@ -419,12 +432,13 @@ nav.tabbar button.active{color:var(--indigo-deep);font-weight:700;}
   <section class="page" id="page-habits">
     <div class="card">
       <h2>習慣</h2>
+      <label class="datelabel">記録日<input type="date" id="habitDateInput"></label>
       <div class="inputrow">
         <input type="text" id="habitInput" placeholder="続けたいことを入力…">
         <button class="btn moss" id="addHabitBtn">追加</button>
       </div>
       <ul class="list" id="habitList"></ul>
-      <p class="hint">継続日数がペットの成長ポイントになるよ🔥</p>
+      <p class="hint">継続日数がペットの成長ポイントになるよ🔥 チェックは「記録日」の日付で記録されるよ</p>
     </div>
   </section>
 
@@ -869,6 +883,8 @@ function autoDraftText(){
 function maybeInjectDraft(){
   const t = todayStr();
   const ta = document.getElementById('diaryInput');
+  if(editingEntryId) return; // don't inject draft while editing an existing entry
+  if(getDiaryDate() !== t) return; // only auto-draft when recording for today
   if(state.draftedFor === t) return; // already injected today
   const draft = autoDraftText();
   if(draft){
@@ -897,19 +913,66 @@ function diaryStreak(){
   }
   return streak;
 }
+function getDiaryDate(){
+  const v = document.getElementById('diaryDateInput').value;
+  return v || todayStr();
+}
+let editingEntryId = null;
+function startEditDiary(id){
+  const e = state.diary.find(x=>x.id===id);
+  if(!e) return;
+  editingEntryId = id;
+  document.getElementById('diaryInput').value = e.text;
+  document.getElementById('diaryDateInput').value = e.date;
+  document.getElementById('diaryEditingBadge').textContent = ' (編集中)';
+  document.getElementById('saveDiaryBtn').textContent = '更新する';
+  document.getElementById('cancelEditDiaryBtn').style.display = '';
+  document.getElementById('diaryInput').focus();
+}
+function cancelEditDiary(){
+  editingEntryId = null;
+  document.getElementById('diaryInput').value = '';
+  document.getElementById('diaryDateInput').value = todayStr();
+  document.getElementById('diaryEditingBadge').textContent = '';
+  document.getElementById('saveDiaryBtn').textContent = '記録する (+EXP)';
+  document.getElementById('cancelEditDiaryBtn').style.display = 'none';
+}
+function deleteDiaryEntry(id){
+  state.diary = state.diary.filter(x=>x.id!==id);
+  if(editingEntryId===id) cancelEditDiary();
+  save(); renderDiary();
+}
 function saveDiary(){
   const ta = document.getElementById('diaryInput');
   const text = ta.value.trim();
   if(!text){ toast("何か書いてみよう🖋️"); return; }
+  const recordDate = getDiaryDate();
+
+  if(editingEntryId){
+    const e = state.diary.find(x=>x.id===editingEntryId);
+    if(e){
+      e.text = text;
+      e.date = recordDate;
+      save();
+      toast('日記を更新したよ');
+      state.diary.sort((a,b)=> a.date < b.date ? 1 : -1);
+      cancelEditDiary();
+      renderDiary(); renderHome();
+    }
+    return;
+  }
+
   const streak = diaryStreak();
   const exp = 10 + Math.min(20, Math.floor(text.length/10)) + Math.min(15, streak);
-  state.diary.unshift({id:Date.now()+"_"+Math.floor(Math.random()*10000), date:todayStr(), text, exp, auto:false});
+  state.diary.unshift({id:Date.now()+"_"+Math.floor(Math.random()*10000), date:recordDate, text, exp, auto:false});
+  state.diary.sort((a,b)=> a.date < b.date ? 1 : -1);
   addExp(exp);
   addEvo(6);
   state.pet.affection = Math.min(100, state.pet.affection + 8);
   state.pet.hunger = Math.min(100, state.pet.hunger + 5);
   state.pet.lastFedDate = todayStr();
   ta.value = "";
+  document.getElementById('diaryDateInput').value = todayStr();
   state.draftedFor = null;
   save();
   toast(`記録した!+${exp}EXP ✍️`);
@@ -921,13 +984,24 @@ function renderDiary(){
   if(state.diary.length===0){ list.innerHTML = '<p class="hint">まだ記録がないよ。今日から始めよう!</p>'; return; }
   list.innerHTML = state.diary.map(e=>`
     <div class="entry">
-      <div class="meta"><span>${e.date}</span><span class="exp">+${e.exp} EXP</span></div>
+      <div class="meta">
+        <span>${e.date}</span>
+        <span style="display:flex;gap:8px;align-items:center;">
+          <span class="exp">+${e.exp} EXP</span>
+          <button class="del" style="font-size:12px;" onclick="startEditDiary('${e.id}')">編集</button>
+          <button class="del" onclick="deleteDiaryEntry('${e.id}')">✕</button>
+        </span>
+      </div>
       <p>${escapeHtml(e.text)}</p>
     </div>`).join('');
 }
 function escapeHtml(s){ return s.replace(/[&<>]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
 
 /* ---------- tasks ---------- */
+function getTaskDate(){
+  const v = document.getElementById('taskDateInput').value;
+  return v || todayStr();
+}
 function addTask(){
   const inp = document.getElementById('taskInput');
   const text = inp.value.trim();
@@ -941,7 +1015,7 @@ function toggleTask(id){
   if(!t) return;
   t.done = !t.done;
   if(t.done){
-    t.doneDate = todayStr();
+    t.doneDate = getTaskDate();
     addExp(8); addEvo(5);
     state.pet.hunger = Math.min(100, state.pet.hunger + 12);
     state.pet.lastFedDate = todayStr();
@@ -968,6 +1042,10 @@ function renderTasks(){
 }
 
 /* ---------- habits ---------- */
+function getHabitDate(){
+  const v = document.getElementById('habitDateInput').value;
+  return v || todayStr();
+}
 function addHabit(){
   const inp = document.getElementById('habitInput');
   const text = inp.value.trim();
@@ -979,15 +1057,15 @@ function addHabit(){
 function checkHabit(id){
   const h = state.habits.find(x=>x.id===id);
   if(!h) return;
-  const t = todayStr();
+  const t = getHabitDate();
   if(h.lastDoneDate === t){
-    // undo today
+    // undo that date
     h.lastDoneDate = null;
     h.streak = Math.max(0, h.streak-1);
     save(); renderHabits(); return;
   }
-  const yesterday = todayStr(new Date(Date.now()-86400000));
-  h.streak = (h.lastDoneDate === yesterday) ? h.streak+1 : 1;
+  const dayBefore = todayStr(new Date(new Date(t).getTime()-86400000));
+  h.streak = (h.lastDoneDate === dayBefore) ? h.streak+1 : 1;
   h.lastDoneDate = t;
   const bonusEvo = 3 + Math.floor(h.streak/5);
   addExp(6 + Math.floor(h.streak/3));
@@ -1168,6 +1246,7 @@ document.querySelectorAll('nav.tabbar button').forEach(b=>{
 
 /* ---------- wire up ---------- */
 document.getElementById('saveDiaryBtn').addEventListener('click', saveDiary);
+document.getElementById('cancelEditDiaryBtn').addEventListener('click', cancelEditDiary);
 document.getElementById('addTaskBtn').addEventListener('click', addTask);
 document.getElementById('taskInput').addEventListener('keydown', e=>{ if(e.key==='Enter') addTask(); });
 document.getElementById('addHabitBtn').addEventListener('click', addHabit);
@@ -1202,6 +1281,9 @@ async function initAfterAuth(user){
   document.getElementById('authScreen').style.display = 'none';
   document.getElementById('appRoot').style.display = 'block';
   document.getElementById('accountEmailTxt').textContent = `ログイン中: ${user.email}`;
+  document.getElementById('diaryDateInput').value = todayStr();
+  document.getElementById('taskDateInput').value = todayStr();
+  document.getElementById('habitDateInput').value = todayStr();
   await loadFromSupabase();
   renderHeader(); renderHome(); renderDiary(); renderTasks(); renderHabits(); renderRewards(); renderPetDetail();
   updateDiaryHint();
