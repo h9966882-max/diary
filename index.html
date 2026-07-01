@@ -1,0 +1,854 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#3E5C76">
+<title>そだてノート</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌱</text></svg>">
+<link rel="manifest" id="manifestLink">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@500;700&family=Zen+Kaku+Gothic+New:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/rough.js/2.1.1/rough.umd.min.js"></script>
+<style>
+:root{
+  --paper:#ECE6D6;
+  --paper-deep:#E1D9C4;
+  --ink:#2E2A24;
+  --ink-soft:#6b6357;
+  --indigo:#3E5C76;
+  --indigo-deep:#2C4257;
+  --coral:#D97756;
+  --moss:#6B7F5D;
+  --gold:#BF9B30;
+  --line:#c9bfa6;
+  --card:#F5F1E6;
+  --radius:14px;
+}
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;}
+body{
+  background:
+    radial-gradient(circle at 1px 1px, rgba(46,42,36,0.10) 1px, transparent 0) 0 0/22px 22px,
+    var(--paper);
+  color:var(--ink);
+  font-family:'Zen Kaku Gothic New', sans-serif;
+  min-height:100vh;
+  padding-bottom:78px;
+  -webkit-tap-highlight-color:transparent;
+}
+.mono{font-family:'JetBrains Mono',monospace;}
+.serif{font-family:'Shippori Mincho',serif;}
+
+header.top{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:16px 18px 10px;
+}
+header.top .brand{
+  font-family:'Shippori Mincho',serif;
+  font-weight:700;
+  font-size:20px;
+  letter-spacing:.05em;
+  color:var(--indigo-deep);
+  display:flex;align-items:center;gap:8px;
+}
+header.top .brand::before{content:"🌱";font-size:18px;}
+.lvbadge{
+  display:flex;align-items:center;gap:6px;
+  background:var(--card);
+  border:1.5px solid var(--ink);
+  border-radius:999px;
+  padding:4px 12px 4px 6px;
+  box-shadow:2px 2px 0 var(--line);
+}
+.lvbadge .num{
+  background:var(--indigo);color:#fff;
+  border-radius:999px;width:24px;height:24px;
+  display:flex;align-items:center;justify-content:center;
+  font-family:'JetBrains Mono',monospace;font-weight:600;font-size:12px;
+}
+.lvbadge .txt{font-size:12px;color:var(--ink-soft);}
+
+main{max-width:520px;margin:0 auto;padding:0 16px;}
+
+.page{display:none;animation:fadein .25s ease;}
+.page.active{display:block;}
+@keyframes fadein{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);}}
+
+.card{
+  background:var(--card);
+  border:1.5px solid var(--ink);
+  border-radius:var(--radius);
+  box-shadow:3px 3px 0 var(--line);
+  padding:16px;
+  margin-bottom:16px;
+}
+.card h2{
+  font-family:'Shippori Mincho',serif;
+  font-size:15px;margin:0 0 10px;
+  color:var(--indigo-deep);
+  display:flex;align-items:center;justify-content:space-between;
+}
+
+/* --- pet stage / observation frame --- */
+.observation{
+  position:relative;
+  display:flex;flex-direction:column;align-items:center;
+  padding:10px 10px 4px;
+}
+.frame-wrap{position:relative;width:220px;height:220px;margin:0 auto;}
+.frame-wrap canvas{position:absolute;top:0;left:0;}
+.stagepill{
+  margin-top:8px;
+  font-size:12px;color:var(--ink-soft);
+  display:flex;gap:10px;align-items:center;
+}
+.stagepill b{color:var(--ink);font-weight:600;}
+.petname{
+  font-family:'Shippori Mincho',serif;
+  font-size:19px;font-weight:700;margin-top:2px;
+}
+
+.barrow{margin:10px 0;}
+.barrow .label{
+  display:flex;justify-content:space-between;
+  font-size:11px;color:var(--ink-soft);margin-bottom:3px;
+}
+.bar{
+  height:9px;border-radius:5px;background:#00000012;
+  border:1px solid var(--ink);overflow:hidden;
+}
+.bar > div{height:100%;border-radius:5px;transition:width .4s ease;}
+.bar.exp>div{background:var(--indigo);}
+.bar.hunger>div{background:var(--coral);}
+.bar.affection>div{background:#c65c8e;}
+
+.todaylist{list-style:none;margin:0;padding:0;}
+.todaylist li{
+  display:flex;align-items:center;gap:8px;
+  padding:7px 0;border-bottom:1px dashed var(--line);
+  font-size:13px;
+}
+.todaylist li:last-child{border-bottom:none;}
+.todaylist .dot{width:7px;height:7px;border-radius:50%;background:var(--moss);flex:none;}
+.todaylist .dot.task{background:var(--coral);}
+.todaylist .empty{color:var(--ink-soft);font-size:12px;padding:6px 0;}
+
+/* --- diary --- */
+textarea{
+  width:100%;min-height:110px;
+  border:1.5px solid var(--ink);border-radius:10px;
+  padding:10px;font-family:'Zen Kaku Gothic New',sans-serif;font-size:14px;
+  background:#fffdf7;resize:vertical;
+}
+.btn{
+  border:1.5px solid var(--ink);border-radius:999px;
+  background:var(--indigo);color:#fff;
+  font-family:'Zen Kaku Gothic New',sans-serif;font-weight:700;font-size:13px;
+  padding:9px 18px;cursor:pointer;
+  box-shadow:2px 2px 0 var(--ink);
+  transition:transform .1s ease;
+}
+.btn:active{transform:translate(2px,2px);box-shadow:0 0 0 var(--ink);}
+.btn.ghost{background:var(--card);color:var(--ink);}
+.btn.coral{background:var(--coral);}
+.btn.moss{background:var(--moss);}
+.row-end{display:flex;justify-content:flex-end;margin-top:8px;}
+
+.entry{
+  border-bottom:1px dashed var(--line);
+  padding:10px 0;font-size:13.5px;
+}
+.entry:last-child{border-bottom:none;}
+.entry .meta{
+  display:flex;justify-content:space-between;
+  font-size:11px;color:var(--ink-soft);margin-bottom:4px;
+}
+.entry .exp{color:var(--indigo);font-family:'JetBrains Mono',monospace;}
+.entry p{margin:0;white-space:pre-wrap;line-height:1.5;}
+
+/* --- tasks / habits --- */
+.inputrow{display:flex;gap:8px;margin-bottom:12px;}
+.inputrow input[type=text]{
+  flex:1;border:1.5px solid var(--ink);border-radius:8px;
+  padding:9px 10px;font-size:14px;background:#fffdf7;
+  font-family:'Zen Kaku Gothic New',sans-serif;
+}
+ul.list{list-style:none;margin:0;padding:0;}
+ul.list li{
+  display:flex;align-items:center;gap:10px;
+  padding:10px 2px;border-bottom:1px dashed var(--line);
+}
+ul.list li:last-child{border-bottom:none;}
+.check{
+  width:22px;height:22px;flex:none;border-radius:6px;
+  border:1.5px solid var(--ink);background:#fffdf7;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;font-size:13px;
+}
+.check.done{background:var(--moss);color:#fff;}
+.itxt{flex:1;font-size:14px;}
+.itxt.done{text-decoration:line-through;color:var(--ink-soft);}
+.streak{
+  font-family:'JetBrains Mono',monospace;font-size:11px;
+  background:var(--gold);color:#fff;border-radius:6px;padding:2px 7px;
+  flex:none;
+}
+.del{background:none;border:none;color:var(--ink-soft);font-size:16px;cursor:pointer;padding:2px 6px;}
+.habitbtn{
+  flex:none;border:1.5px solid var(--ink);border-radius:8px;
+  padding:6px 10px;font-size:12px;background:#fffdf7;cursor:pointer;
+}
+.habitbtn.done{background:var(--moss);color:#fff;}
+
+/* --- pet detail --- */
+.milestones{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;}
+.milestones .m{
+  font-size:11px;border:1px solid var(--gold);color:var(--gold);
+  border-radius:999px;padding:3px 10px;font-family:'JetBrains Mono',monospace;
+}
+.namefield{display:flex;gap:8px;align-items:center;margin-bottom:10px;}
+.namefield input{
+  flex:1;border:1.5px solid var(--ink);border-radius:8px;padding:8px 10px;
+  font-family:'Shippori Mincho',serif;font-size:15px;background:#fffdf7;
+}
+.stagechart{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;}
+.stagechip{
+  width:34px;height:34px;border-radius:8px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:11px;font-family:'JetBrains Mono',monospace;
+  border:1.5px solid var(--ink);
+}
+.stagechip.reached{background:var(--indigo);color:#fff;}
+.stagechip.now{background:var(--coral);color:#fff;}
+.stagechip.locked{opacity:.35;}
+
+/* --- tab bar --- */
+nav.tabbar{
+  position:fixed;bottom:0;left:0;right:0;
+  background:var(--card);border-top:1.5px solid var(--ink);
+  display:flex;justify-content:space-around;
+  padding:8px 4px calc(8px + env(safe-area-inset-bottom));
+  z-index:10;
+}
+nav.tabbar button{
+  background:none;border:none;display:flex;flex-direction:column;
+  align-items:center;gap:2px;color:var(--ink-soft);
+  font-family:'Zen Kaku Gothic New',sans-serif;font-size:10px;
+  cursor:pointer;padding:4px 8px;
+}
+nav.tabbar button .ic{font-size:19px;}
+nav.tabbar button.active{color:var(--indigo-deep);font-weight:700;}
+
+.toast{
+  position:fixed;top:14px;left:50%;transform:translateX(-50%);
+  background:var(--ink);color:#F5F1E6;
+  padding:9px 18px;border-radius:999px;font-size:13px;
+  z-index:100;opacity:0;pointer-events:none;transition:all .3s ease;
+  white-space:nowrap;
+}
+.toast.show{opacity:1;top:20px;}
+
+.hint{font-size:12px;color:var(--ink-soft);line-height:1.6;}
+.divider{border:none;border-top:1px dashed var(--line);margin:12px 0;}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="brand">そだてノート</div>
+  <div class="lvbadge">
+    <div class="num" id="lvNum">1</div>
+    <div class="txt">Lv <span id="lvExpTxt">0/100</span></div>
+  </div>
+</header>
+
+<main>
+
+  <!-- HOME -->
+  <section class="page active" id="page-home">
+    <div class="card">
+      <div class="observation">
+        <div class="frame-wrap"><canvas id="petCanvasHome" width="220" height="220"></canvas></div>
+        <div class="petname" id="homePetName">みつ</div>
+        <div class="stagepill"><span>段階 <b id="homeStageNum">1</b>/<span id="homeStageMax">12</span></span><span id="homeStageName">たまご</span></div>
+      </div>
+      <div class="barrow">
+        <div class="label"><span>げんき</span><span class="mono" id="hungerTxt">100</span></div>
+        <div class="bar hunger"><div id="hungerBar" style="width:100%"></div></div>
+      </div>
+      <div class="barrow">
+        <div class="label"><span>なかよし</span><span class="mono" id="affTxt">0</span></div>
+        <div class="bar affection"><div id="affBar" style="width:0%"></div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>今日のやること</h2>
+      <ul class="todaylist" id="todayList"></ul>
+    </div>
+  </section>
+
+  <!-- DIARY -->
+  <section class="page" id="page-diary">
+    <div class="card">
+      <h2>今日の日記</h2>
+      <textarea id="diaryInput" placeholder="今日はどんな一日だった?"></textarea>
+      <div class="row-end"><button class="btn" id="saveDiaryBtn">記録する (+EXP)</button></div>
+      <p class="hint" id="diaryHint"></p>
+    </div>
+    <div class="card">
+      <h2>これまでの記録</h2>
+      <div id="entryList"></div>
+    </div>
+  </section>
+
+  <!-- TASKS -->
+  <section class="page" id="page-tasks">
+    <div class="card">
+      <h2>タスク</h2>
+      <div class="inputrow">
+        <input type="text" id="taskInput" placeholder="やることを入力…">
+        <button class="btn coral" id="addTaskBtn">追加</button>
+      </div>
+      <ul class="list" id="taskList"></ul>
+      <p class="hint">達成するとペットのエサになるよ🍚</p>
+    </div>
+  </section>
+
+  <!-- HABITS -->
+  <section class="page" id="page-habits">
+    <div class="card">
+      <h2>習慣</h2>
+      <div class="inputrow">
+        <input type="text" id="habitInput" placeholder="続けたいことを入力…">
+        <button class="btn moss" id="addHabitBtn">追加</button>
+      </div>
+      <ul class="list" id="habitList"></ul>
+      <p class="hint">継続日数がペットの成長ポイントになるよ🔥</p>
+    </div>
+  </section>
+
+  <!-- PET DETAIL -->
+  <section class="page" id="page-pet">
+    <div class="card">
+      <div class="observation">
+        <div class="frame-wrap"><canvas id="petCanvasDetail" width="220" height="220"></canvas></div>
+      </div>
+      <div class="namefield">
+        <input type="text" id="petNameInput" placeholder="名前をつけてね">
+        <button class="btn ghost" id="saveNameBtn">保存</button>
+      </div>
+      <p class="hint" id="petBioTxt"></p>
+      <hr class="divider">
+      <div class="barrow">
+        <div class="label"><span>進化ポイント</span><span class="mono" id="evoTxt">0</span></div>
+        <div class="bar exp"><div id="evoBar" style="width:0%"></div></div>
+      </div>
+      <div class="stagechart" id="stageChart"></div>
+    </div>
+    <div class="card">
+      <h2>記念日 / 実績</h2>
+      <p class="hint" id="daysWithTxt"></p>
+      <div class="milestones" id="milestoneList"></div>
+    </div>
+  </section>
+
+</main>
+
+<nav class="tabbar">
+  <button data-page="home" class="active"><span class="ic">🏠</span>ホーム</button>
+  <button data-page="diary"><span class="ic">📔</span>日記</button>
+  <button data-page="tasks"><span class="ic">✅</span>タスク</button>
+  <button data-page="habits"><span class="ic">🔥</span>習慣</button>
+  <button data-page="pet"><span class="ic">🐾</span>ペット</button>
+</nav>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* =========================================================
+   そだてノート — 日記×タスク×習慣 ペット育成PWA
+   ========================================================= */
+
+/* ---------- storage (with in-memory fallback) ---------- */
+const memoryStore = {};
+const storage = {
+  get(k){
+    try{ const v = localStorage.getItem(k); return v===null? null : v; }
+    catch(e){ return memoryStore[k] ?? null; }
+  },
+  set(k,v){
+    try{ localStorage.setItem(k,v); }
+    catch(e){ memoryStore[k]=v; }
+  }
+};
+
+const todayStr = (d=new Date()) => {
+  const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,'0'), day=String(d.getDate()).padStart(2,'0');
+  return `${y}-${m}-${day}`;
+};
+const daysBetween = (a,b) => Math.floor((new Date(b)-new Date(a))/86400000);
+
+/* ---------- stage definitions ---------- */
+const STAGES = [
+  {name:"たまご", thresh:0},
+  {name:"ひび割れたたまご", thresh:20},
+  {name:"うまれたて", thresh:45},
+  {name:"よちよち期", thresh:80},
+  {name:"幼体", thresh:125},
+  {name:"少年期", thresh:180},
+  {name:"成長期", thresh:245},
+  {name:"若獣期", thresh:320},
+  {name:"成獣期", thresh:410},
+  {name:"覚醒期", thresh:520},
+  {name:"完成形", thresh:650},
+  {name:"真化", thresh:800},
+];
+const MAX_STAGE = STAGES.length; // 12
+const MILESTONE_DAYS = [7,14,30,50,100,200,300,500,750,1000,1500,2000];
+
+/* ---------- default state ---------- */
+function defaultState(){
+  return {
+    player:{ exp:0, level:1 },
+    pet:{ name:"みつ", evoPoints:0, hunger:100, affection:0, born:todayStr(), lastFedDate:null, milestonesHit:[] },
+    diary:[],           // {id, date, text, exp, auto}
+    tasks:[],           // {id, text, done, doneDate}
+    habits:[],          // {id, text, streak, lastDoneDate}
+    draftedFor:null      // date string for which auto-draft already injected
+  };
+}
+let state;
+function load(){
+  const raw = storage.get('sodateNote');
+  if(raw){ try{ state = JSON.parse(raw); }catch(e){ state = defaultState(); } }
+  else state = defaultState();
+  // decay hunger based on days since last activity
+  applyPassiveDecay();
+}
+function save(){ storage.set('sodateNote', JSON.stringify(state)); }
+
+function applyPassiveDecay(){
+  const last = state.pet.lastFedDate || state.pet.born;
+  const gap = daysBetween(last, todayStr());
+  if(gap > 0){
+    // gentle decay: -4/day, but also gentle regen if within 1 day of writing diary
+    state.pet.hunger = Math.max(20, state.pet.hunger - gap*4);
+  }
+}
+
+/* ---------- exp / level ---------- */
+function expToNext(level){ return 100 + (level-1)*40; }
+function addExp(amount){
+  state.player.exp += amount;
+  let need = expToNext(state.player.level);
+  while(state.player.exp >= need){
+    state.player.exp -= need;
+    state.player.level++;
+    need = expToNext(state.player.level);
+    toast(`レベルアップ! Lv${state.player.level} 🎉`);
+  }
+}
+
+function currentStageIndex(){
+  let idx = 0;
+  for(let i=0;i<STAGES.length;i++){ if(state.pet.evoPoints >= STAGES[i].thresh) idx = i; }
+  return idx; // 0-based
+}
+function addEvo(amount){
+  const before = currentStageIndex();
+  state.pet.evoPoints += amount;
+  const after = currentStageIndex();
+  if(after > before){
+    toast(`${state.pet.name}が進化した!「${STAGES[after].name}」 ✨`);
+  }
+  checkMilestones();
+}
+function checkMilestones(){
+  const d = daysBetween(state.pet.born, todayStr());
+  MILESTONE_DAYS.forEach(m=>{
+    if(d >= m && !state.pet.milestonesHit.includes(m)){
+      state.pet.milestonesHit.push(m);
+      toast(`記念日達成: ${m}日 🌟`);
+    }
+  });
+}
+
+/* ---------- toast ---------- */
+let toastTimer;
+function toast(msg){
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>el.classList.remove('show'), 2200);
+}
+
+/* ---------- pet rendering (rough.js hand-drawn) ---------- */
+function drawPet(canvas){
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  const rc = rough.canvas(canvas);
+  const cx = canvas.width/2, cy = canvas.height/2 + 10;
+  const stageIdx = currentStageIndex(); // 0..11
+  const stage = stageIdx+1; // 1..12
+  const seed = 1; // stable seed so it doesn't jitter on every re-render... vary slightly by stage
+  const opts = (extra={}) => Object.assign({stroke:'#2E2A24', strokeWidth:2.2, roughness:1.6, seed: stage*7+3}, extra);
+  const fillOpts = (fill, extra={}) => Object.assign({stroke:'#2E2A24', strokeWidth:2.2, roughness:1.6, fill, fillStyle:'hachure', hachureGap:4, seed: stage*7+3}, extra);
+
+  // ground line
+  rc.line(20, cy+62, canvas.width-20, cy+62, opts({strokeWidth:1.6, roughness:2.2}));
+
+  if(stage === 1){
+    // egg
+    rc.ellipse(cx, cy+20, 70, 90, fillOpts('#F5F1E6'));
+    rc.line(cx-14, cy-2, cx+6, cy+14, opts({strokeWidth:1.6}));
+    return;
+  }
+  if(stage === 2){
+    // cracked egg with a peek
+    rc.ellipse(cx, cy+24, 76, 90, fillOpts('#F5F1E6'));
+    rc.line(cx-20,cy-8,cx-2,cy+8, opts({strokeWidth:1.8}));
+    rc.line(cx-2,cy+8,cx-16,cy+18, opts({strokeWidth:1.8}));
+    rc.circle(cx, cy-6, 20, fillOpts('#F5F1E6', {strokeWidth:1.8}));
+    return;
+  }
+
+  const bodySize = 46 + stage*4.4;
+  const hasEars   = stage >= 3;
+  const hasHorns  = stage >= 6;
+  const hasSpots  = stage >= 7;
+  const hasWings  = stage >= 9;
+  const hasAura   = stage >= 11;
+  const isFinal   = stage >= 12;
+
+  // aura (post-evolution milestone flourish)
+  if(hasAura){
+    const rings = 2 + Math.min(3, Math.floor(state.pet.milestonesHit.length/3));
+    for(let i=0;i<rings;i++){
+      rc.circle(cx, cy, bodySize*1.7 + i*22, opts({stroke:'#BF9B30', strokeWidth:1.2, roughness:2.6}));
+    }
+  }
+
+  // wings
+  if(hasWings){
+    rc.path(`M ${cx-bodySize*0.7} ${cy-10} Q ${cx-bodySize*1.5} ${cy-40} ${cx-bodySize*1.3} ${cy+30} Q ${cx-bodySize*0.9} ${cy+10} ${cx-bodySize*0.7} ${cy-10} Z`, fillOpts('#E1D9C4'));
+    rc.path(`M ${cx+bodySize*0.7} ${cy-10} Q ${cx+bodySize*1.5} ${cy-40} ${cx+bodySize*1.3} ${cy+30} Q ${cx+bodySize*0.9} ${cy+10} ${cx+bodySize*0.7} ${cy-10} Z`, fillOpts('#E1D9C4'));
+  }
+
+  // tail
+  rc.path(`M ${cx+bodySize*0.55} ${cy+bodySize*0.4} Q ${cx+bodySize*1.1} ${cy+bodySize*0.7} ${cx+bodySize*0.95} ${cy+bodySize*0.1}`, opts({strokeWidth:2.4}));
+
+  // legs
+  rc.line(cx-bodySize*0.35, cy+bodySize*0.75, cx-bodySize*0.4, cy+bodySize*0.98, opts());
+  rc.line(cx+bodySize*0.35, cy+bodySize*0.75, cx+bodySize*0.4, cy+bodySize*0.98, opts());
+
+  // body
+  const fillColor = isFinal ? '#3E5C76' : (stage>=7 ? '#EADFC4' : '#F5F1E6');
+  rc.circle(cx, cy, bodySize, fillOpts(fillColor));
+
+  // ears
+  if(hasEars){
+    rc.path(`M ${cx-bodySize*0.55} ${cy-bodySize*0.6} Q ${cx-bodySize*0.75} ${cy-bodySize*1.15} ${cx-bodySize*0.3} ${cy-bodySize*0.85} Z`, fillOpts('#F5F1E6'));
+    rc.path(`M ${cx+bodySize*0.55} ${cy-bodySize*0.6} Q ${cx+bodySize*0.75} ${cy-bodySize*1.15} ${cx+bodySize*0.3} ${cy-bodySize*0.85} Z`, fillOpts('#F5F1E6'));
+  }
+  // horns
+  if(hasHorns){
+    rc.line(cx-bodySize*0.25, cy-bodySize*0.85, cx-bodySize*0.35, cy-bodySize*1.25, opts({strokeWidth:2.6}));
+    rc.line(cx+bodySize*0.25, cy-bodySize*0.85, cx+bodySize*0.35, cy-bodySize*1.25, opts({strokeWidth:2.6}));
+  }
+  // spots
+  if(hasSpots){
+    rc.circle(cx-bodySize*0.35, cy+bodySize*0.15, 9, opts({strokeWidth:1.6}));
+    rc.circle(cx+bodySize*0.3, cy-bodySize*0.1, 7, opts({strokeWidth:1.6}));
+    rc.circle(cx, cy+bodySize*0.35, 6, opts({strokeWidth:1.6}));
+  }
+
+  // face — mood depends on hunger
+  const mood = state.pet.hunger > 60 ? 'happy' : (state.pet.hunger > 30 ? 'meh' : 'sad');
+  const eyeY = cy - bodySize*0.1;
+  rc.circle(cx-bodySize*0.28, eyeY, 6, fillOpts('#2E2A24'));
+  rc.circle(cx+bodySize*0.28, eyeY, 6, fillOpts('#2E2A24'));
+  if(mood==='happy'){
+    rc.path(`M ${cx-bodySize*0.2} ${cy+bodySize*0.2} Q ${cx} ${cy+bodySize*0.38} ${cx+bodySize*0.2} ${cy+bodySize*0.2}`, opts({strokeWidth:1.8}));
+  } else if(mood==='meh'){
+    rc.line(cx-bodySize*0.15, cy+bodySize*0.28, cx+bodySize*0.15, cy+bodySize*0.28, opts({strokeWidth:1.8}));
+  } else {
+    rc.path(`M ${cx-bodySize*0.2} ${cy+bodySize*0.32} Q ${cx} ${cy+bodySize*0.16} ${cx+bodySize*0.2} ${cy+bodySize*0.32}`, opts({strokeWidth:1.8}));
+  }
+  // cheeks
+  rc.circle(cx-bodySize*0.42, cy+bodySize*0.08, 5, fillOpts('#D97756', {fillStyle:'solid', strokeWidth:0}));
+  rc.circle(cx+bodySize*0.42, cy+bodySize*0.08, 5, fillOpts('#D97756', {fillStyle:'solid', strokeWidth:0}));
+}
+
+function renderAllPetCanvases(){
+  drawPet(document.getElementById('petCanvasHome'));
+  if(document.getElementById('page-pet').classList.contains('active')){
+    drawPet(document.getElementById('petCanvasDetail'));
+  }
+}
+
+/* ---------- diary ---------- */
+function autoDraftText(){
+  const t = todayStr();
+  const doneTasks = state.tasks.filter(x=>x.done && x.doneDate===t).map(x=>x.text);
+  const doneHabits = state.habits.filter(x=>x.lastDoneDate===t).map(x=>x.text);
+  if(doneTasks.length===0 && doneHabits.length===0) return "";
+  let lines = [];
+  doneTasks.forEach(txt=> lines.push(`今日は「${txt}」を達成した!`));
+  doneHabits.forEach(txt=> lines.push(`「${txt}」を続けられた。`));
+  return lines.join("\n") + "\n\n";
+}
+function maybeInjectDraft(){
+  const t = todayStr();
+  const ta = document.getElementById('diaryInput');
+  if(state.draftedFor === t) return; // already injected today
+  const draft = autoDraftText();
+  if(draft){
+    ta.value = draft + ta.value;
+    state.draftedFor = t;
+    save();
+  }
+  updateDiaryHint();
+}
+function updateDiaryHint(){
+  const streak = diaryStreak();
+  document.getElementById('diaryHint').textContent = streak>0
+    ? `連続記録 ${streak}日目。長く書くほどEXPアップ、タスク/習慣を達成すると自動で下書きが入るよ📝`
+    : `タスクや習慣を達成した日は、自動で下書きが入るよ📝`;
+}
+function diaryStreak(){
+  let streak = 0;
+  let d = new Date();
+  // does today have entry? if not, look from yesterday
+  const dates = new Set(state.diary.map(e=>e.date));
+  let cursor = new Date();
+  if(!dates.has(todayStr(cursor))) cursor.setDate(cursor.getDate()-1);
+  while(dates.has(todayStr(cursor))){
+    streak++;
+    cursor.setDate(cursor.getDate()-1);
+  }
+  return streak;
+}
+function saveDiary(){
+  const ta = document.getElementById('diaryInput');
+  const text = ta.value.trim();
+  if(!text){ toast("何か書いてみよう🖋️"); return; }
+  const streak = diaryStreak();
+  const exp = 10 + Math.min(20, Math.floor(text.length/10)) + Math.min(15, streak);
+  state.diary.unshift({id:Date.now()+"_"+Math.floor(Math.random()*10000), date:todayStr(), text, exp, auto:false});
+  addExp(exp);
+  addEvo(6);
+  state.pet.affection = Math.min(100, state.pet.affection + 8);
+  state.pet.hunger = Math.min(100, state.pet.hunger + 5);
+  state.pet.lastFedDate = todayStr();
+  ta.value = "";
+  state.draftedFor = null;
+  save();
+  toast(`記録した!+${exp}EXP ✍️`);
+  renderDiary(); renderHome(); renderPetDetail(); renderHeader();
+}
+function renderDiary(){
+  const list = document.getElementById('entryList');
+  if(state.diary.length===0){ list.innerHTML = '<p class="hint">まだ記録がないよ。今日から始めよう!</p>'; return; }
+  list.innerHTML = state.diary.map(e=>`
+    <div class="entry">
+      <div class="meta"><span>${e.date}</span><span class="exp">+${e.exp} EXP</span></div>
+      <p>${escapeHtml(e.text)}</p>
+    </div>`).join('');
+}
+function escapeHtml(s){ return s.replace(/[&<>]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
+
+/* ---------- tasks ---------- */
+function addTask(){
+  const inp = document.getElementById('taskInput');
+  const text = inp.value.trim();
+  if(!text) return;
+  state.tasks.unshift({id:Date.now()+"_"+Math.floor(Math.random()*10000), text, done:false, doneDate:null});
+  inp.value = '';
+  save(); renderTasks();
+}
+function toggleTask(id){
+  const t = state.tasks.find(x=>x.id===id);
+  if(!t) return;
+  t.done = !t.done;
+  if(t.done){
+    t.doneDate = todayStr();
+    addExp(8); addEvo(5);
+    state.pet.hunger = Math.min(100, state.pet.hunger + 12);
+    state.pet.lastFedDate = todayStr();
+    toast(`${state.pet.name}にエサをあげた🍚 +8EXP`);
+  } else {
+    t.doneDate = null;
+  }
+  save(); renderTasks(); renderHome(); renderHeader(); renderPetDetail();
+}
+function deleteTask(id){
+  state.tasks = state.tasks.filter(x=>x.id!==id);
+  save(); renderTasks();
+}
+function renderTasks(){
+  const list = document.getElementById('taskList');
+  if(state.tasks.length===0){ list.innerHTML = '<li class="hint" style="border:none;">タスクを追加してみよう</li>'; return; }
+  list.innerHTML = state.tasks.map(t=>`
+    <li>
+      <button class="check ${t.done?'done':''}" onclick="toggleTask('${t.id}')">${t.done?'✓':''}</button>
+      <span class="itxt ${t.done?'done':''}">${escapeHtml(t.text)}</span>
+      <button class="del" onclick="deleteTask('${t.id}')">✕</button>
+    </li>`).join('');
+}
+
+/* ---------- habits ---------- */
+function addHabit(){
+  const inp = document.getElementById('habitInput');
+  const text = inp.value.trim();
+  if(!text) return;
+  state.habits.unshift({id:Date.now()+"_"+Math.floor(Math.random()*10000), text, streak:0, lastDoneDate:null});
+  inp.value = '';
+  save(); renderHabits();
+}
+function checkHabit(id){
+  const h = state.habits.find(x=>x.id===id);
+  if(!h) return;
+  const t = todayStr();
+  if(h.lastDoneDate === t){
+    // undo today
+    h.lastDoneDate = null;
+    h.streak = Math.max(0, h.streak-1);
+    save(); renderHabits(); return;
+  }
+  const yesterday = todayStr(new Date(Date.now()-86400000));
+  h.streak = (h.lastDoneDate === yesterday) ? h.streak+1 : 1;
+  h.lastDoneDate = t;
+  const bonusEvo = 3 + Math.floor(h.streak/5);
+  addExp(6 + Math.floor(h.streak/3));
+  addEvo(bonusEvo);
+  state.pet.affection = Math.min(100, state.pet.affection + 4);
+  save(); renderHabits(); renderHome(); renderHeader(); renderPetDetail();
+  toast(`「${h.text}」継続${h.streak}日目!🔥`);
+}
+function deleteHabit(id){
+  state.habits = state.habits.filter(x=>x.id!==id);
+  save(); renderHabits();
+}
+function renderHabits(){
+  const list = document.getElementById('habitList');
+  if(state.habits.length===0){ list.innerHTML = '<li class="hint" style="border:none;">習慣を追加してみよう</li>'; return; }
+  const t = todayStr();
+  list.innerHTML = state.habits.map(h=>`
+    <li>
+      <button class="habitbtn ${h.lastDoneDate===t?'done':''}" onclick="checkHabit('${h.id}')">${h.lastDoneDate===t?'済':'今日'}</button>
+      <span class="itxt">${escapeHtml(h.text)}</span>
+      <span class="streak">🔥${h.streak}</span>
+      <button class="del" onclick="deleteHabit('${h.id}')">✕</button>
+    </li>`).join('');
+}
+
+/* ---------- home ---------- */
+function renderHome(){
+  document.getElementById('homePetName').textContent = state.pet.name;
+  const idx = currentStageIndex();
+  document.getElementById('homeStageNum').textContent = idx+1;
+  document.getElementById('homeStageMax').textContent = MAX_STAGE;
+  document.getElementById('homeStageName').textContent = STAGES[idx].name;
+  document.getElementById('hungerTxt').textContent = Math.round(state.pet.hunger);
+  document.getElementById('hungerBar').style.width = state.pet.hunger + '%';
+  document.getElementById('affTxt').textContent = Math.round(state.pet.affection);
+  document.getElementById('affBar').style.width = state.pet.affection + '%';
+
+  const t = todayStr();
+  const items = [];
+  state.tasks.filter(x=>!x.done).slice(0,5).forEach(x=> items.push({dot:'task', text:x.text}));
+  state.habits.forEach(h=> items.push({dot:'habit', text: h.lastDoneDate===t? `${h.text}(達成済)` : h.text}));
+  const list = document.getElementById('todayList');
+  list.innerHTML = items.length ? items.map(i=>`<li><span class="dot ${i.dot}"></span>${escapeHtml(i.text)}</li>`).join('')
+    : '<li class="empty">今日のタスク・習慣はまだないよ</li>';
+}
+
+/* ---------- header ---------- */
+function renderHeader(){
+  document.getElementById('lvNum').textContent = state.player.level;
+  document.getElementById('lvExpTxt').textContent = `${state.player.exp}/${expToNext(state.player.level)}`;
+}
+
+/* ---------- pet detail ---------- */
+function renderPetDetail(){
+  document.getElementById('petNameInput').value = state.pet.name;
+  const idx = currentStageIndex();
+  const next = STAGES[idx+1];
+  document.getElementById('petBioTxt').textContent = idx+1 < MAX_STAGE
+    ? `現在「${STAGES[idx].name}」。次の進化まであと${next.thresh - state.pet.evoPoints}ポイント。`
+    : `「${STAGES[idx].name}」に到達済み。ここからは記念日ごとに特別な変化があるよ✨`;
+  document.getElementById('evoTxt').textContent = state.pet.evoPoints;
+  const maxThresh = STAGES[STAGES.length-1].thresh;
+  document.getElementById('evoBar').style.width = Math.min(100, (state.pet.evoPoints/maxThresh)*100) + '%';
+
+  const chart = document.getElementById('stageChart');
+  chart.innerHTML = STAGES.map((s,i)=>{
+    const cls = i===idx ? 'now' : (i<idx ? 'reached' : 'locked');
+    return `<div class="stagechip ${cls}" title="${s.name}">${i+1}</div>`;
+  }).join('');
+
+  const days = daysBetween(state.pet.born, todayStr());
+  document.getElementById('daysWithTxt').textContent = `${state.pet.name}と暮らして ${days}日目`;
+  const ml = document.getElementById('milestoneList');
+  ml.innerHTML = state.pet.milestonesHit.length
+    ? state.pet.milestonesHit.map(m=>`<span class="m">${m}日達成</span>`).join('')
+    : '<span class="hint">まだ記念日はないよ</span>';
+}
+function savePetName(){
+  const v = document.getElementById('petNameInput').value.trim();
+  if(v){ state.pet.name = v; save(); renderHome(); renderPetDetail(); toast('名前を保存したよ'); }
+}
+
+/* ---------- tab navigation ---------- */
+function showPage(name){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById('page-'+name).classList.add('active');
+  document.querySelectorAll('nav.tabbar button').forEach(b=>b.classList.toggle('active', b.dataset.page===name));
+  if(name==='diary'){ maybeInjectDraft(); }
+  if(name==='pet'){ renderPetDetail(); requestAnimationFrame(()=>drawPet(document.getElementById('petCanvasDetail'))); }
+}
+document.querySelectorAll('nav.tabbar button').forEach(b=>{
+  b.addEventListener('click', ()=>showPage(b.dataset.page));
+});
+
+/* ---------- wire up ---------- */
+document.getElementById('saveDiaryBtn').addEventListener('click', saveDiary);
+document.getElementById('addTaskBtn').addEventListener('click', addTask);
+document.getElementById('taskInput').addEventListener('keydown', e=>{ if(e.key==='Enter') addTask(); });
+document.getElementById('addHabitBtn').addEventListener('click', addHabit);
+document.getElementById('habitInput').addEventListener('keydown', e=>{ if(e.key==='Enter') addHabit(); });
+document.getElementById('saveNameBtn').addEventListener('click', savePetName);
+
+/* ---------- PWA manifest + service worker (inline, single-file) ---------- */
+(function setupPWA(){
+  const manifest = {
+    name: "そだてノート", short_name: "そだてノート",
+    start_url: ".", display: "standalone",
+    background_color: "#ECE6D6", theme_color: "#3E5C76",
+    icons: [{ src: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%233E5C76'/%3E%3Ctext x='50' y='68' font-size='55' text-anchor='middle'%3E%F0%9F%8C%B1%3C/text%3E%3C/svg%3E", sizes:"192x192", type:"image/svg+xml" }]
+  };
+  const blob = new Blob([JSON.stringify(manifest)], {type:'application/json'});
+  document.getElementById('manifestLink').setAttribute('href', URL.createObjectURL(blob));
+
+  if('serviceWorker' in navigator){
+    const swCode = `
+      self.addEventListener('install', e => self.skipWaiting());
+      self.addEventListener('activate', e => self.clients.claim());
+      self.addEventListener('fetch', e => {});
+    `;
+    const swBlob = new Blob([swCode], {type:'text/javascript'});
+    navigator.serviceWorker.register(URL.createObjectURL(swBlob)).catch(()=>{});
+  }
+})();
+
+/* ---------- init ---------- */
+load();
+renderHeader(); renderHome(); renderDiary(); renderTasks(); renderHabits(); renderPetDetail();
+updateDiaryHint();
+window.addEventListener('load', renderAllPetCanvases);
+requestAnimationFrame(renderAllPetCanvases);
+</script>
+</body>
+</html>
