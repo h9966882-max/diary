@@ -423,6 +423,12 @@ nav.tabbar button.active{color:var(--indigo-deep);font-weight:700;}
         <input type="text" id="taskInput" placeholder="やることを入力…">
         <button class="btn coral" id="addTaskBtn">追加</button>
       </div>
+      <div class="chiprow" id="repeatChips" style="margin-bottom:8px;">
+        <button class="chip active" data-repeat="none">なし</button>
+        <button class="chip" data-repeat="daily">毎日</button>
+        <button class="chip" data-repeat="weekly">毎週</button>
+      </div>
+      <div class="chiprow" id="repeatWeekdayChips" style="display:none;margin-bottom:10px;"></div>
       <ul class="list" id="taskList"></ul>
       <p class="hint">達成するとペットのエサになるよ🍚 チェックは「記録日」の日付で記録されるよ</p>
     </div>
@@ -464,6 +470,11 @@ nav.tabbar button.active{color:var(--indigo-deep);font-weight:700;}
       <h2>記念日 / 実績</h2>
       <p class="hint" id="daysWithTxt"></p>
       <div class="milestones" id="milestoneList"></div>
+    </div>
+    <div class="card">
+      <h2>通知</h2>
+      <p class="hint" id="notifyStatusTxt">まだ通知は設定されてないよ</p>
+      <button class="btn indigo" id="enableNotifyBtn" style="width:100%;">🔔 リマインダー通知を有効にする</button>
     </div>
     <div class="card">
       <p class="hint" id="accountEmailTxt"></p>
@@ -508,6 +519,7 @@ nav.tabbar button.active{color:var(--indigo-deep);font-weight:700;}
 const SUPABASE_URL = 'https://wvsogabeckhuhcqelpja.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind2c29nYWJlY2todWhjcWVscGphIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI5MTM0MTQsImV4cCI6MjA5ODQ4OTQxNH0.2acsqUIXTYsxUoYM6Lu5F4n-vwShh1Ogmpomm4FlBys';
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const VAPID_PUBLIC_KEY = 'BAvBMorutR3_kd8uljoDjDbkcFAIwwqcSgZyTgkIMdDk4x394QXt00GxJxvmn48rK6hkUG9FDr9x4GG0Gncgf0g';
 let currentUser = null;
 let saveTimer = null;
 
@@ -998,47 +1010,108 @@ function renderDiary(){
 function escapeHtml(s){ return s.replace(/[&<>]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
 
 /* ---------- tasks ---------- */
+const WEEKDAY_CODES = ['SU','MO','TU','WE','TH','FR','SA'];
+const WEEKDAY_LABELS = {SU:'日',MO:'月',TU:'火',WE:'水',TH:'木',FR:'金',SA:'土'};
+let newTaskRepeat = 'none';
+let newTaskWeekdays = [];
+
 function getTaskDate(){
   const v = document.getElementById('taskDateInput').value;
   return v || todayStr();
 }
+function weekdayCodeOf(dateStr){
+  return WEEKDAY_CODES[new Date(dateStr+'T00:00:00').getDay()];
+}
+function renderRepeatChips(){
+  document.querySelectorAll('#repeatChips .chip').forEach(b=>{
+    b.classList.toggle('active', b.dataset.repeat === newTaskRepeat);
+  });
+  const wd = document.getElementById('repeatWeekdayChips');
+  if(newTaskRepeat === 'weekly'){
+    wd.style.display = 'flex';
+    wd.innerHTML = WEEKDAY_CODES.map(c=>`<button class="chip ${newTaskWeekdays.includes(c)?'active':''}" onclick="toggleNewTaskWeekday('${c}')">${WEEKDAY_LABELS[c]}</button>`).join('');
+  } else {
+    wd.style.display = 'none';
+  }
+}
+function toggleNewTaskWeekday(c){
+  const i = newTaskWeekdays.indexOf(c);
+  if(i>=0) newTaskWeekdays.splice(i,1); else newTaskWeekdays.push(c);
+  renderRepeatChips();
+}
+document.querySelectorAll('#repeatChips .chip').forEach(b=>{
+  b.addEventListener('click', ()=>{ newTaskRepeat = b.dataset.repeat; renderRepeatChips(); });
+});
+renderRepeatChips();
+
 function addTask(){
   const inp = document.getElementById('taskInput');
   const text = inp.value.trim();
   if(!text) return;
-  state.tasks.unshift({id:Date.now()+"_"+Math.floor(Math.random()*10000), text, done:false, doneDate:null});
+  if(newTaskRepeat==='weekly' && newTaskWeekdays.length===0){ toast('繰り返す曜日を選んでね'); return; }
+  state.tasks.unshift({
+    id:Date.now()+"_"+Math.floor(Math.random()*10000), text, done:false, doneDate:null,
+    repeat: newTaskRepeat, repeatDays: newTaskRepeat==='weekly' ? [...newTaskWeekdays] : []
+  });
   inp.value = '';
+  newTaskRepeat = 'none'; newTaskWeekdays = [];
+  renderRepeatChips();
   save(); renderTasks();
+}
+function isTaskDoneOnDate(t, dateStr){
+  if(t.repeat && t.repeat !== 'none') return t.doneDate === dateStr;
+  return t.done;
+}
+function isTaskVisibleOnDate(t, dateStr){
+  if(!t.repeat || t.repeat === 'none' || t.repeat === 'daily') return true;
+  if(t.repeat === 'weekly') return (t.repeatDays||[]).includes(weekdayCodeOf(dateStr));
+  return true;
 }
 function toggleTask(id){
   const t = state.tasks.find(x=>x.id===id);
   if(!t) return;
-  t.done = !t.done;
-  if(t.done){
-    t.doneDate = getTaskDate();
-    addExp(8); addEvo(5);
-    state.pet.hunger = Math.min(100, state.pet.hunger + 12);
-    state.pet.lastFedDate = todayStr();
-    toast(`${state.pet.name}にエサをあげた🍚 +8EXP`);
-    speak(pick(LINES.taskDone)());
-  } else {
-    t.doneDate = null;
+  const selDate = getTaskDate();
+  const currentlyDone = isTaskDoneOnDate(t, selDate);
+  if(currentlyDone){
+    t.done = false;
+    if(t.doneDate === selDate) t.doneDate = null;
+    save(); renderTasks(); renderHome(); renderHeader(); renderPetDetail();
+    return;
   }
+  t.done = true;
+  t.doneDate = selDate;
+  addExp(8); addEvo(5);
+  state.pet.hunger = Math.min(100, state.pet.hunger + 12);
+  state.pet.lastFedDate = todayStr();
+  toast(`${state.pet.name}にエサをあげた🍚 +8EXP`);
+  speak(pick(LINES.taskDone)());
   save(); renderTasks(); renderHome(); renderHeader(); renderPetDetail();
 }
 function deleteTask(id){
   state.tasks = state.tasks.filter(x=>x.id!==id);
   save(); renderTasks();
 }
+function repeatBadge(t){
+  if(!t.repeat || t.repeat==='none') return '';
+  if(t.repeat==='daily') return '<span class="streak" style="background:var(--indigo);">🔁毎日</span>';
+  const days = (t.repeatDays||[]).map(c=>WEEKDAY_LABELS[c]).join('');
+  return `<span class="streak" style="background:var(--indigo);">🔁${days}</span>`;
+}
 function renderTasks(){
   const list = document.getElementById('taskList');
-  if(state.tasks.length===0){ list.innerHTML = '<li class="hint" style="border:none;">タスクを追加してみよう</li>'; return; }
-  list.innerHTML = state.tasks.map(t=>`
+  const selDate = getTaskDate();
+  const visible = state.tasks.filter(t=>isTaskVisibleOnDate(t, selDate));
+  if(visible.length===0){ list.innerHTML = '<li class="hint" style="border:none;">この日のタスクはないよ</li>'; return; }
+  list.innerHTML = visible.map(t=>{
+    const done = isTaskDoneOnDate(t, selDate);
+    return `
     <li>
-      <button class="check ${t.done?'done':''}" onclick="toggleTask('${t.id}')">${t.done?'✓':''}</button>
-      <span class="itxt ${t.done?'done':''}">${escapeHtml(t.text)}</span>
+      <button class="check ${done?'done':''}" onclick="toggleTask('${t.id}')">${done?'✓':''}</button>
+      <span class="itxt ${done?'done':''}">${escapeHtml(t.text)}</span>
+      ${repeatBadge(t)}
       <button class="del" onclick="deleteTask('${t.id}')">✕</button>
-    </li>`).join('');
+    </li>`;
+  }).join('');
 }
 
 /* ---------- habits ---------- */
@@ -1249,11 +1322,86 @@ document.getElementById('saveDiaryBtn').addEventListener('click', saveDiary);
 document.getElementById('cancelEditDiaryBtn').addEventListener('click', cancelEditDiary);
 document.getElementById('addTaskBtn').addEventListener('click', addTask);
 document.getElementById('taskInput').addEventListener('keydown', e=>{ if(e.key==='Enter') addTask(); });
+document.getElementById('taskDateInput').addEventListener('change', renderTasks);
+document.getElementById('habitDateInput').addEventListener('change', renderHabits);
 document.getElementById('addHabitBtn').addEventListener('click', addHabit);
 document.getElementById('habitInput').addEventListener('keydown', e=>{ if(e.key==='Enter') addHabit(); });
 document.getElementById('saveNameBtn').addEventListener('click', savePetName);
 
 /* ---------- PWA manifest + service worker (inline, single-file) ---------- */
+/* ---------- push notifications ---------- */
+function urlBase64ToUint8Array(base64String){
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const rawData = atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+  for (let i = 0; i < rawData.length; ++i) outputArray[i] = rawData.charCodeAt(i);
+  return outputArray;
+}
+async function checkNotifyStatus(){
+  const statusEl = document.getElementById('notifyStatusTxt');
+  const btn = document.getElementById('enableNotifyBtn');
+  if(!('serviceWorker' in navigator) || !('PushManager' in window)){
+    statusEl.textContent = 'この端末・ブラウザは通知に対応してないみたい';
+    btn.disabled = true;
+    return;
+  }
+  if(Notification.permission === 'denied'){
+    statusEl.textContent = '通知がブロックされてるよ。ブラウザの設定から許可してね';
+    return;
+  }
+  try{
+    const reg = await navigator.serviceWorker.ready;
+    const sub = await reg.pushManager.getSubscription();
+    if(sub){
+      statusEl.textContent = '通知はオンだよ🔔';
+      btn.textContent = '🔕 通知をオフにする';
+      btn.onclick = disablePush;
+    } else {
+      statusEl.textContent = 'まだ通知は設定されてないよ';
+      btn.textContent = '🔔 リマインダー通知を有効にする';
+      btn.onclick = enablePush;
+    }
+  }catch(e){ /* ignore, sw not ready yet */ }
+}
+async function enablePush(){
+  const statusEl = document.getElementById('notifyStatusTxt');
+  try{
+    const perm = await Notification.requestPermission();
+    if(perm !== 'granted'){
+      statusEl.textContent = '通知の許可がもらえなかったよ';
+      return;
+    }
+    const reg = await navigator.serviceWorker.ready;
+    const sub = await reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+    });
+    const {error} = await sb.from('push_subscriptions').upsert({
+      user_id: currentUser.id,
+      subscription: sub.toJSON(),
+      updated_at: new Date().toISOString()
+    });
+    if(error){ statusEl.textContent = '登録に失敗しちゃった…もう一度試してみて'; console.error(error); return; }
+    toast('通知をオンにしたよ🔔');
+    checkNotifyStatus();
+  }catch(e){
+    console.error(e);
+    statusEl.textContent = '通知の設定でエラーが起きたよ';
+  }
+}
+async function disablePush(){
+  try{
+    const reg = await navigator.serviceWorker.ready;
+    const sub = await reg.pushManager.getSubscription();
+    if(sub){ await sub.unsubscribe(); }
+    await sb.from('push_subscriptions').delete().eq('user_id', currentUser.id);
+    toast('通知をオフにしたよ');
+  }catch(e){ console.error(e); }
+  checkNotifyStatus();
+}
+document.getElementById('enableNotifyBtn').addEventListener('click', enablePush);
+
 (function setupPWA(){
   const manifest = {
     name: "そだてノート", short_name: "そだてノート",
@@ -1265,13 +1413,16 @@ document.getElementById('saveNameBtn').addEventListener('click', savePetName);
   document.getElementById('manifestLink').setAttribute('href', URL.createObjectURL(blob));
 
   if('serviceWorker' in navigator){
-    const swCode = `
-      self.addEventListener('install', e => self.skipWaiting());
-      self.addEventListener('activate', e => self.clients.claim());
-      self.addEventListener('fetch', e => {});
-    `;
-    const swBlob = new Blob([swCode], {type:'text/javascript'});
-    navigator.serviceWorker.register(URL.createObjectURL(swBlob)).catch(()=>{});
+    navigator.serviceWorker.register('./sw.js').catch(()=>{
+      // fallback for local testing where sw.js isn't hosted alongside index.html
+      const swCode = `
+        self.addEventListener('install', e => self.skipWaiting());
+        self.addEventListener('activate', e => self.clients.claim());
+        self.addEventListener('fetch', e => {});
+      `;
+      const swBlob = new Blob([swCode], {type:'text/javascript'});
+      navigator.serviceWorker.register(URL.createObjectURL(swBlob)).catch(()=>{});
+    });
   }
 })();
 
@@ -1288,6 +1439,7 @@ async function initAfterAuth(user){
   renderHeader(); renderHome(); renderDiary(); renderTasks(); renderHabits(); renderRewards(); renderPetDetail();
   updateDiaryHint();
   renderAllPetCanvases();
+  checkNotifyStatus();
 }
 function showAuthScreen(){
   currentUser = null;
