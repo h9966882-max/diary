@@ -226,6 +226,31 @@ textarea{
 .entry .exp{color:var(--indigo);font-family:'JetBrains Mono',monospace;}
 .entry p{margin:0;white-space:pre-wrap;line-height:1.5;}
 
+.yeargroup{border-bottom:1.5px solid var(--line);margin-bottom:4px;}
+.yeargroup:last-child{border-bottom:none;}
+.yeargroup > summary{
+  font-family:'Shippori Mincho',serif;font-size:15px;font-weight:700;
+  color:var(--indigo-deep);padding:8px 2px;cursor:pointer;
+  list-style:none;display:flex;align-items:center;gap:6px;
+}
+.yeargroup > summary::before{content:'▸';font-size:11px;color:var(--ink-soft);transition:transform .15s ease;}
+.yeargroup[open] > summary::before{transform:rotate(90deg);}
+.yeargroup > summary::-webkit-details-marker{display:none;}
+
+.monthgroup{margin:0 0 4px 14px;border-bottom:1px dashed var(--line);}
+.monthgroup:last-child{border-bottom:none;}
+.monthgroup > summary{
+  font-size:12.5px;color:var(--ink-soft);padding:6px 2px;cursor:pointer;
+  list-style:none;display:flex;align-items:center;gap:6px;
+}
+.monthgroup > summary .cnt{
+  font-family:'JetBrains Mono',monospace;font-size:10px;
+  background:#00000008;border-radius:6px;padding:1px 6px;
+}
+.monthgroup > summary::before{content:'▸';font-size:10px;transition:transform .15s ease;}
+.monthgroup[open] > summary::before{transform:rotate(90deg);}
+.monthgroup > summary::-webkit-details-marker{display:none;}
+
 /* --- tasks / habits --- */
 .inputrow{display:flex;gap:8px;margin-bottom:12px;}
 .inputrow input[type=text]{
@@ -994,7 +1019,20 @@ function saveDiary(){
 function renderDiary(){
   const list = document.getElementById('entryList');
   if(state.diary.length===0){ list.innerHTML = '<p class="hint">まだ記録がないよ。今日から始めよう!</p>'; return; }
-  list.innerHTML = state.diary.map(e=>`
+
+  // group by year -> month (state.diary is already sorted newest first)
+  const groups = {};
+  const order = [];
+  state.diary.forEach(e=>{
+    const [y,m] = e.date.split('-');
+    const yKey = `${y}年`;
+    const mKey = `${parseInt(m,10)}月`;
+    if(!groups[yKey]) { groups[yKey] = {}; order.push(yKey); }
+    if(!groups[yKey][mKey]) groups[yKey][mKey] = [];
+    groups[yKey][mKey].push(e);
+  });
+
+  const entryHtml = (e)=>`
     <div class="entry">
       <div class="meta">
         <span>${e.date}</span>
@@ -1005,7 +1043,25 @@ function renderDiary(){
         </span>
       </div>
       <p>${escapeHtml(e.text)}</p>
-    </div>`).join('');
+    </div>`;
+
+  list.innerHTML = order.map((yKey, yi)=>{
+    const months = groups[yKey];
+    const monthOrder = Object.keys(months); // insertion order = newest first already
+    const monthHtml = monthOrder.map((mKey, mi)=>{
+      const entries = months[mKey].map(entryHtml).join('');
+      const openAttr = (yi===0 && mi===0) ? ' open' : '';
+      return `<details class="monthgroup"${openAttr}>
+        <summary>${mKey}<span class="cnt">${months[mKey].length}件</span></summary>
+        ${entries}
+      </details>`;
+    }).join('');
+    const openAttr = yi===0 ? ' open' : '';
+    return `<details class="yeargroup"${openAttr}>
+      <summary>${yKey}</summary>
+      ${monthHtml}
+    </details>`;
+  }).join('');
 }
 function escapeHtml(s){ return s.replace(/[&<>]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
 
